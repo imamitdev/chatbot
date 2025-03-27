@@ -1,0 +1,57 @@
+services:
+  email:
+    image: bytemark/smtp
+    restart: always
+
+  memcached:
+    image: memcached
+    command: memcached -m 300
+    restart: always
+
+  postgres:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: "py-user"
+      POSTGRES_PASSWORD: "p@@sWord"
+      POSTGRES_DB: "chatbot_production"
+    volumes:
+      - /data/postgres:/var/lib/postgresql/data
+
+  caddy-gen:
+    container_name: caddy-gen
+    image: "wemakeservices/caddy-gen:latest"
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro # needs socket to read events
+      - /data/caddy:/data/caddy # needs volume to back up certificates
+      - /data/www:/www # static and media files
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - app
+
+  app:
+    build: .
+    depends_on:
+      - memcached
+      - postgres
+      - email
+    restart: always
+    volumes:
+      - /data/app:/data
+      - /data/www:/www
+    labels: # labels are required for caddy
+      virtual.host: www.example.com # your domain
+      virtual.alias: www.example.com # redirect to host without www
+      virtual.port: 8000 # exposed port of this container
+      virtual.tls-email: imamitsinghchauhan@gmail.com # ssl is now on
+      virtual.host.directives: |
+        root * /www
+        handle /static/* {
+          file_server
+        }
+        handle /media/* {
+          file_server
+        }

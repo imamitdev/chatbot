@@ -1,0 +1,12 @@
+-r requirements.txt
+
+# for linting
+pre-commit
+
+# for debugging
+django-debug-toolbar
+ipdb
+
+# for tests
+factory-boy
+time-machine

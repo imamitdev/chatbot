@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <title>Chatbot with Alpine.js</title>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f9f9f9; margin: 0; }
+    .chat-container { max-width: 400px; margin: 50px auto; background-color: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .chat-header { background-color: #007bff; color: white; padding: 15px; text-align: center; }
+    .chat-body { height: 400px; overflow-y: auto; padding: 15px; }
+    .chat-bubble { margin-bottom: 10px; }
+    .user { background-color: #007bff; color: white; padding: 10px; border-radius: 10px; max-width: 70%; }
+    .bot { background-color: #e0e0e0; color: black; padding: 10px; border-radius: 10px; max-width: 70%; }
+    .input-container { display: flex; padding: 10px; border-top: 1px solid #ccc; }
+    input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; }
+    button { margin-left: 10px; background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; }
+    button:hover { background-color: #0056b3; }
+  </style>
+</head>
+<body>
+  <div class="chat-container" x-data="chatbot()">
+    <div class="chat-header">Chatbot</div>
+    <div class="chat-body" x-ref="chatBody">
+      <template x-for="msg in messages" :key="msg.id">
+        <div class="chat-bubble" :class="msg.sender === 'user' ? 'user' : 'bot'">
+          <span x-text="msg.text"></span>
+        </div>
+      </template>
+    </div>
+    <div class="input-container">
+      <input type="hidden" name="csrfmiddlewaretoken" id="csrf_token" value="{{ csrf_token }}">
+
+      <input type="text" x-model="userMessage" @keydown.enter="sendMessage()" placeholder="Type your message..." />
+      <button @click="sendMessage()">Send</button>
+    </div>
+  </div>
+
+<script>
+function chatbot() {
+  return {
+    messages: [],
+    userMessage: '',
+    sendMessage() {
+      if (!this.userMessage.trim()) return;
+
+      this.messages.push({ id: Date.now(), text: this.userMessage, sender: 'user' });
+
+      const csrfToken = document.getElementById('csrf_token')?.value;
+
+      fetch('/chat/', {
+        method: 'POST',
+        body: new URLSearchParams({ message: this.userMessage }),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': csrfToken,
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        this.messages.push({ id: Date.now(), text: data.response, sender: 'bot' });
+      })
+      .catch(error => {
+        this.messages.push({ id: Date.now(), text: 'Error: Unable to connect to the server.', sender: 'bot' });
+      });
+
+      this.userMessage = '';
+      this.$nextTick(() => this.scrollToBottom());
+    },
+    scrollToBottom() {
+      this.$refs.chatBody.scrollTop = this.$refs.chatBody.scrollHeight;
+    }
+  };
+}
+
+</script>
+
+</body>
+</html>
